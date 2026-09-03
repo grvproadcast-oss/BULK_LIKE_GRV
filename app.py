@@ -6,6 +6,7 @@ import binascii
 import aiohttp
 import requests
 import json
+import random
 import like_pb2
 import uid_generator_pb2
 import visit_count_pb2
@@ -27,8 +28,14 @@ used_count = 0
 def load_tokens(region):
     try:
         if region == "IND":
-            with open("token_ind.json", "r") as f:
-                tokens = json.load(f)
+            # Live token fetching directly from main repo
+            url = "https://raw.githubusercontent.com/grvproadcast-oss/GAURAV-NEW-LIKE/main/token_ind.json"
+            resp = requests.get(url, timeout=10)
+            if resp.status_code == 200:
+                tokens = resp.json()
+            else:
+                with open("token_ind.json", "r") as f:
+                    tokens = json.load(f)
         elif region in {"BR", "US", "SAC", "NA"}:
             with open("token_br.json", "r") as f:
                 tokens = json.load(f)
@@ -96,12 +103,22 @@ async def send_multiple_requests(uid, region, url):
         if encrypted_uid is None:
             return None
         tokens = load_tokens(region)
-        if tokens is None:
+        if tokens is None or len(tokens) == 0:
             return None
+
+        # 15 se 25 ke beech random count choose karega
+        like_count = random.randint(15, 25)
+        
+        # Tokens shuffle karke random IDs pick karega
+        shuffled_tokens = list(tokens)
+        random.shuffle(shuffled_tokens)
+        selected_tokens = shuffled_tokens[:like_count]
+
         tasks = []
-        for i in range(100):
-            token = tokens[i % len(tokens)]["token"]
+        for item in selected_tokens:
+            token = item["token"]
             tasks.append(send_request(encrypted_uid, token, url))
+            
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return results
     except Exception as e:
@@ -162,9 +179,8 @@ def make_request(encrypt, region, token):
 
 @app.route('/like', methods=['GET'])
 def handle_requests():
-    global used_count  # ✅ fix added
+    global used_count
 
-    # ✅ API key check
     api_key = request.args.get("key")
     if api_key not in VALID_API_KEYS:
         result = OrderedDict([
@@ -184,7 +200,7 @@ def handle_requests():
 
     try:
         def process_request():
-            global used_count  # ✅ fix added again (for nested function)
+            global used_count
 
             tokens = load_tokens(region)
             if not tokens:
@@ -214,7 +230,6 @@ def handle_requests():
             like_given = after_like - before_like
             status = 1 if like_given > 0 else 2
 
-            # ✅ Count only when successful (status == 1)
             if status == 1:
                 used_count += 1
 
@@ -247,10 +262,9 @@ def handle_requests():
         return {"error": str(e)}, 500
 
 
-# 🆕 /remain endpoint
 @app.route('/remain', methods=['GET'])
 def remain_info():
-    global used_count  # ✅ fix added
+    global used_count
 
     remaining = max(daily_limit - used_count, 0)
     data = {
