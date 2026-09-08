@@ -30,7 +30,7 @@ def load_tokens(region):
     try:
         if region == "IND":
             # Cache-busting timestamp to always fetch latest tokens
-            url = f"https://raw.githubusercontent.com/grvproadcast-oss/BULKLIKEGRV/main/token_ind.json?t={int(time.time())}
+            url = f"https://raw.githubusercontent.com/grvproadcast-oss/BULK_LIKE_GRV/main/token_ind.json?t={int(time.time())}
             headers = {
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache"
