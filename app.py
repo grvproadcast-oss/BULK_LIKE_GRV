@@ -29,7 +29,7 @@ used_count = 0
 def load_tokens(region):
     try:
         if region == "IND":
-            # Cache bypass ke sath live token fetch
+            # Cache-busting timestamp to always fetch latest tokens
             url = f"https://raw.githubusercontent.com/grvproadcast-oss/GAURAV-NEW-LIKE/main/token_ind.json?t={int(time.time())}"
             headers = {
                 "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -110,20 +110,30 @@ async def send_multiple_requests(uid, region, url):
         encrypted_uid = encrypt_message(protobuf_message)
         if encrypted_uid is None:
             return None
+
+        # Live tokens load karega bina kisi limit ya hardcode count ke
         tokens = load_tokens(region)
-        if tokens is None or len(tokens) == 0:
+        if not tokens or len(tokens) == 0:
             return None
 
+        total_tokens = len(tokens)
+        app.logger.info(f"Dynamic token count detected: {total_tokens}")
+
+        # Total tokens ke according dynamic gap taaki Garena packet drop na kare
+        gap = max(0.02, min(0.05, 1.5 / total_tokens))
+
         tasks = []
+        # JSON file me maujood har ek valid token ko process karega
         for idx, item in enumerate(tokens):
-            token = item["token"]
-            # 0.05s micro-gap taaki packets drop na hon aur execution fast ho
-            stagger = idx * 0.05
-            tasks.append(send_request(encrypted_uid, token, url, stagger))
-            
+            token = item.get("token")
+            if token:
+                stagger = idx * gap
+                tasks.append(send_request(encrypted_uid, token, url, stagger))
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        # Chhota 0.4s pause count sync ke liye
-        await asyncio.sleep(0.4)
+        
+        # Server like count update hone ke liye brief wait
+        await asyncio.sleep(0.5)
         return results
     except Exception as e:
         app.logger.error(f"Exception in send_multiple_requests: {e}")
@@ -282,4 +292,4 @@ def remain_info():
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
-        
+    
