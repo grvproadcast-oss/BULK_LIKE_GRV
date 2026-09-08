@@ -29,25 +29,32 @@ used_count = 0
 def load_tokens(region):
     try:
         if region == "IND":
-            # Cache-busting timestamp to always fetch latest tokens
-            url = f"https://raw.githubusercontent.com/grvproadcast-oss/BULK_LIKE_GRV/main/token_ind.json?t={int(time.time())}
+            # 1. Pehle local file check karega (Fast aur crash-proof)
+            try:
+                with open("token_ind.json", "r") as f:
+                    tokens = json.load(f)
+                    if tokens and len(tokens) > 0:
+                        return tokens
+            except Exception:
+                pass
+
+            # 2. Online GitHub backup (Syntax aur quotes fixed)
+            url = f"https://raw.githubusercontent.com/grvproadcast-oss/BULK_LIKE_GRV/main/token_ind.json?t={int(time.time())}"
             headers = {
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache"
             }
             resp = requests.get(url, headers=headers, timeout=6)
             if resp.status_code == 200:
-                tokens = resp.json()
-            else:
-                with open("token_ind.json", "r") as f:
-                    tokens = json.load(f)
+                return resp.json()
+
         elif region in {"BR", "US", "SAC", "NA"}:
             with open("token_br.json", "r") as f:
-                tokens = json.load(f)
+                return json.load(f)
         else:
             with open("token_bd.json", "r") as f:
-                tokens = json.load(f)
-        return tokens
+                return json.load(f)
+        return None
     except Exception as e:
         app.logger.error(f"Error loading tokens for region {region}: {e}")
         return None
@@ -119,7 +126,7 @@ async def send_multiple_requests(uid, region, url):
         total_tokens = len(tokens)
         app.logger.info(f"Dynamic token count detected: {total_tokens}")
 
-        # Total tokens ke according dynamic gap taaki Garena packet drop na kare
+        # Total tokens ke according dynamic gap taaki packets drop na hon
         gap = max(0.02, min(0.05, 1.5 / total_tokens))
 
         tasks = []
