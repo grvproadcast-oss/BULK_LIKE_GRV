@@ -29,13 +29,13 @@ used_count = 0
 def load_tokens(region):
     try:
         if region == "IND":
-            # Cache bypass karne ke liye timestamp (?t=...) aur no-cache headers
+            # Cache bypass ke sath live token fetch
             url = f"https://raw.githubusercontent.com/grvproadcast-oss/GAURAV-NEW-LIKE/main/token_ind.json?t={int(time.time())}"
             headers = {
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache"
             }
-            resp = requests.get(url, headers=headers, timeout=10)
+            resp = requests.get(url, headers=headers, timeout=6)
             if resp.status_code == 200:
                 tokens = resp.json()
             else:
@@ -95,7 +95,7 @@ async def send_request(encrypted_uid, token, url, delay=0.0):
             "ReleaseVersion": "OB54"
         }
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, data=edata, headers=headers, timeout=aiohttp.ClientTimeout(total=8)) as response:
+            async with session.post(url, data=edata, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as response:
                 return await response.text()
     except Exception as e:
         app.logger.error(f"Exception in send_request: {e}")
@@ -114,17 +114,16 @@ async def send_multiple_requests(uid, region, url):
         if tokens is None or len(tokens) == 0:
             return None
 
-        # Saare available tokens ko use karega
         tasks = []
         for idx, item in enumerate(tokens):
             token = item["token"]
-            # Har request ke beech 120ms ka gap taaki server block na kare
-            stagger = idx * 0.12
+            # 0.05s micro-gap taaki packets drop na hon aur execution fast ho
+            stagger = idx * 0.05
             tasks.append(send_request(encrypted_uid, token, url, stagger))
             
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        # Final status check karne se pehle 1.2s wait taaki likes update ho sakein
-        await asyncio.sleep(1.2)
+        # Chhota 0.4s pause count sync ke liye
+        await asyncio.sleep(0.4)
         return results
     except Exception as e:
         app.logger.error(f"Exception in send_multiple_requests: {e}")
@@ -169,7 +168,7 @@ def make_request(encrypt, region, token):
             "X-GA": "v1 1",
             "ReleaseVersion": "OB54"
         }
-        response = requests.post(url, data=edata, headers=headers, verify=False, timeout=8)
+        response = requests.post(url, data=edata, headers=headers, verify=False, timeout=6)
         binary = response.content
         decoded = visit_count_pb2.Info()
         decoded.ParseFromString(binary)
@@ -283,4 +282,4 @@ def remain_info():
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
-            
+        
