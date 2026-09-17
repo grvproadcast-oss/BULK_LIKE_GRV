@@ -99,7 +99,7 @@ async def send_request(encrypted_uid, token, url, delay=0.0):
             "Expect": "100-continue",
             "X-Unity-Version": "2018.4.11f1",
             "X-GA": "v1 1",
-            "ReleaseVersion": "OB54"
+            "ReleaseVersion": "OB55"
         }
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=edata, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as response:
@@ -183,7 +183,7 @@ def make_request(encrypt, region, token):
             "Expect": "100-continue",
             "X-Unity-Version": "2018.4.11f1",
             "X-GA": "v1 1",
-            "ReleaseVersion": "OB54"
+            "ReleaseVersion": "OB55"
         }
         response = requests.post(url, data=edata, headers=headers, verify=False, timeout=6)
         binary = response.content
